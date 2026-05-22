@@ -1,8 +1,8 @@
 import asyncio
 import json
 import random
-from pathlib import Path
 from playwright.async_api import async_playwright
+from db import init_db, upsert_product
 
 # Lista ID produktów do zescrapowania (docelowo ładowana z bazy danych)
 PRODUCT_IDS = [
@@ -10,7 +10,6 @@ PRODUCT_IDS = [
 ]
 
 BASE_URL = "https://www2.hm.com/pl_pl/productpage.{product_id}.html"
-OUTPUT_DIR = Path(__file__).parent / "output"
 
 # Losowe opóźnienie między kolejnymi produktami (sekundy)
 DELAY_MIN = 8
@@ -62,7 +61,7 @@ def extract_product_data(data: dict, product_variant_id: str) -> dict:
 
 
 async def main():
-    OUTPUT_DIR.mkdir(exist_ok=True)
+    init_db()
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(
@@ -105,17 +104,13 @@ async def main():
                 await asyncio.sleep(delay)
 
             url = BASE_URL.format(product_id=product_id)
-            print(f"[{i+1}/{len(PRODUCT_IDS)}] Scraping: {url}")
+            print(f"[{i + 1}/{len(PRODUCT_IDS)}] Scraping: {url}")
 
             try:
                 data = await scrape_product(page, url)
                 result = extract_product_data(data, product_id)
-
-                output_path = OUTPUT_DIR / f"hm_product_{product_id}.json"
-                output_path.write_text(
-                    json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
-                )
-                print(f"  Saved: {output_path}")
+                upsert_product(result)
+                print(f"  Saved to DB: {product_id}")
             except Exception as e:
                 print(f"  ERROR for {product_id}: {e}")
 
