@@ -28,6 +28,14 @@ def init_db():
         """)
 
 
+def get_tracked_products_for_scraping() -> list[dict]:
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT id, url FROM TRACKED_PRODUCTS_HM"
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
 def add_tracked_product(product_id: str, url: str):
     with get_connection() as conn:
         conn.execute(

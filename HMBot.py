@@ -2,14 +2,7 @@ import asyncio
 import json
 import random
 from playwright.async_api import async_playwright
-from db import init_db, upsert_product
-
-# Lista ID produktów do zescrapowania (docelowo ładowana z bazy danych)
-PRODUCT_IDS = [
-    "1338759001",
-]
-
-BASE_URL = "https://www2.hm.com/pl_pl/productpage.{product_id}.html"
+from db import init_db, upsert_product, get_tracked_products_for_scraping
 
 # Losowe opóźnienie między kolejnymi produktami (sekundy)
 DELAY_MIN = 8
@@ -97,22 +90,27 @@ async def main():
         await context.add_init_script(STEALTH_INIT_SCRIPT)
         page = await context.new_page()
 
-        for i, product_id in enumerate(PRODUCT_IDS):
+        products = get_tracked_products_for_scraping()
+        if not products:
+            print("Brak produktów do zescrapowania.")
+            await browser.close()
+            return
+
+        for i, product in enumerate(products):
             if i > 0:
                 delay = random.uniform(DELAY_MIN, DELAY_MAX)
                 print(f"Waiting {delay:.1f}s before next product...")
                 await asyncio.sleep(delay)
 
-            url = BASE_URL.format(product_id=product_id)
-            print(f"[{i + 1}/{len(PRODUCT_IDS)}] Scraping: {url}")
+            print(f"[{i + 1}/{len(products)}] Scraping: {product['url']}")
 
             try:
-                data = await scrape_product(page, url)
-                result = extract_product_data(data, product_id)
+                data = await scrape_product(page, product["url"])
+                result = extract_product_data(data, product["id"])
                 upsert_product(result)
-                print(f"  Saved to DB: {product_id}")
+                print(f"  Saved to DB: {product['id']}")
             except Exception as e:
-                print(f"  ERROR for {product_id}: {e}")
+                print(f"  ERROR for {product['id']}: {e}")
 
         await browser.close()
 
