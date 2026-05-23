@@ -1,7 +1,7 @@
 import re
 import discord
 from discord import app_commands
-from db import add_tracked_product, remove_tracked_product, get_all_products
+from db import init_db, add_tracked_product, remove_tracked_product, get_all_products
 
 BOT_TOKEN = "PASTE_YOUR_BOT_TOKEN_HERE"
 GUILD_ID = 0  # wklej ID swojego serwera Discord (liczba całkowita)
@@ -81,6 +81,7 @@ async def lista(interaction: discord.Interaction):
 
 @client.event
 async def on_ready():
+    init_db()
     await tree.sync(guild=guild)
     print(f"Bot gotowy jako {client.user}")
 
