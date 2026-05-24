@@ -73,8 +73,8 @@ def upsert_product(product: dict):
                 name             = excluded.name,
                 lastPrice        = CASE WHEN currentPrice = 0 THEN NULL ELSE currentPrice END,
                 currentPrice     = excluded.currentPrice,
-                minPrice         = MIN(minPrice, excluded.currentPrice),
-                maxPrice         = MAX(maxPrice, excluded.currentPrice),
+                minPrice         = MIN(COALESCE(minPrice, excluded.currentPrice), excluded.currentPrice),
+                maxPrice         = MAX(COALESCE(maxPrice, excluded.currentPrice), excluded.currentPrice),
                 sendNotification = CASE WHEN excluded.currentPrice < currentPrice THEN 1 ELSE sendNotification END,
                 lastUpdatedOn    = CASE WHEN excluded.currentPrice != currentPrice THEN datetime('now', 'localtime') ELSE lastUpdatedOn END
         """,

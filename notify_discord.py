@@ -22,20 +22,28 @@ def mark_sent(product_id: str):
         )
 
 
+def _fmt_price(val) -> str:
+    return f"{val:.2f} PLN" if val is not None else "—"
+
+
+def _fmt_drop(old, new) -> str:
+    return f"-{(old - new) / old * 100:.1f}%" if old else "—"
+
+
 def build_embed(p: dict) -> dict:
-    relative_drop = ((p["lastPrice"] - p["currentPrice"]) / p["lastPrice"]) * 100
-    drop_from_max = ((p["maxPrice"] - p["currentPrice"]) / p["maxPrice"]) * 100
+    current = p["currentPrice"]
     return {
         "title": "🏷️ PROMOCJA",
+        "url": p["url"],
         "color": HM_RED,
         "fields": [
             {
                 "name": f"`{p['id']}` — {p['name']}",
                 "value": (
                     f"Cena zmieniła się **{p['lastUpdatedOn']}**\n"
-                    f"**{p['lastPrice']:.2f} PLN** → **{p['currentPrice']:.2f} PLN**\n"
-                    f"Najwyższa: {p['maxPrice']:.2f} PLN | Najniższa: {p['minPrice']:.2f} PLN\n"
-                    f"Względna zmiana: **-{relative_drop:.1f}%** | Od max: **-{drop_from_max:.1f}%**"
+                    f"**{_fmt_price(p['lastPrice'])}** → **{_fmt_price(current)}**\n"
+                    f"Najwyższa: {_fmt_price(p['maxPrice'])} | Najniższa: {_fmt_price(p['minPrice'])}\n"
+                    f"Względna zmiana: **{_fmt_drop(p['lastPrice'], current)}** | Od max: **{_fmt_drop(p['maxPrice'], current)}**"
                 ),
             }
         ],
