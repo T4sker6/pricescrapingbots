@@ -1,0 +1,20 @@
+{
+  "hm": {
+    "name": "H&M",
+    "color": 15007760,
+    "hostPattern": "hm.com",
+    "urlIdRegex": "productpage\\.(\\d+)\\.html",
+    "scrapeStrategy": "hm",
+    "useCredentials": true,
+    "discordWebhook": "PASTE_WEBHOOK_URL_HERE"
+  },
+  "reserved": {
+    "name": "Reserved",
+    "color": 1710618,
+    "hostPattern": "reserved.com",
+    "urlIdRegex": "(\\d{3,4}[A-Za-z]{2}-\\d{2,3}[A-Za-z])",
+    "scrapeStrategy": "schema-org",
+    "useCredentials": false,
+    "discordWebhook": "PASTE_WEBHOOK_URL_HERE"
+  }
+}

@@ -1,24 +1,28 @@
+import json
 import requests
+from pathlib import Path
 from db import get_connection
 
-WEBHOOK_URL = "PASTE_YOUR_DISCORD_WEBHOOK_URL_HERE"
+STORES_PATH = Path(__file__).parent / "stores.json"
 
-HM_RED = 0xE50010
+
+def load_stores():
+    return json.loads(STORES_PATH.read_text())
 
 
 def get_pending_products() -> list[dict]:
     with get_connection() as conn:
         rows = conn.execute(
-            "SELECT * FROM TRACKED_PRODUCTS_HM WHERE sendNotification = 1"
+            "SELECT * FROM TRACKED_PRODUCTS WHERE sendNotification = 1"
         ).fetchall()
     return [dict(row) for row in rows]
 
 
-def mark_sent(product_id: str):
+def mark_sent(product_id: str, store: str):
     with get_connection() as conn:
         conn.execute(
-            "UPDATE TRACKED_PRODUCTS_HM SET sendNotification = 0 WHERE id = ?",
-            (product_id,),
+            "UPDATE TRACKED_PRODUCTS SET sendNotification = 0 WHERE id = ? AND store = ?",
+            (product_id, store),
         )
 
 
@@ -30,12 +34,12 @@ def _fmt_drop(old, new) -> str:
     return f"-{(old - new) / old * 100:.1f}%" if old else "—"
 
 
-def build_embed(p: dict) -> dict:
+def build_embed(p: dict, store_cfg: dict) -> dict:
     current = p["currentPrice"]
     return {
-        "title": "🏷️ PROMOCJA",
+        "title": f"🏷️ PROMOCJA — {store_cfg['name']}",
         "url": p["url"],
-        "color": HM_RED,
+        "color": store_cfg["color"],
         "fields": [
             {
                 "name": f"`{p['id']}` — {p['name']}",
@@ -51,18 +55,30 @@ def build_embed(p: dict) -> dict:
 
 
 def main():
+    stores = load_stores()
     products = get_pending_products()
     if not products:
         print("Brak produktów do powiadomienia.")
         return
 
     for product in products:
+        store_key = product["store"]
+        store_cfg = stores.get(store_key)
+        if not store_cfg:
+            print(f"  Nieznany sklep '{store_key}' dla {product['id']}, pomijam.")
+            continue
+
+        webhook = store_cfg.get("discordWebhook", "")
+        if not webhook or webhook == "PASTE_WEBHOOK_URL_HERE":
+            print(f"  Brak webhooka dla sklepu '{store_key}', pomijam.")
+            continue
+
         try:
-            embed = build_embed(product)
-            response = requests.post(WEBHOOK_URL, json={"embeds": [embed]})
+            embed = build_embed(product, store_cfg)
+            response = requests.post(webhook, json={"embeds": [embed]})
             response.raise_for_status()
-            mark_sent(product["id"])
-            print(f"  Wysłano: {product['id']} - {product['name']}")
+            mark_sent(product["id"], product["store"])
+            print(f"  Wysłano: {product['id']} ({store_key}) - {product['name']}")
         except Exception as e:
             print(f"  ERROR dla {product['id']}: {e}")
 
